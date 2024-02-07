@@ -130,6 +130,7 @@ ATTN_RESOLUTIONS="0 1 2"
 LAYERS_PER_BLOCK="2"
 ## training
 python -u train_abstr_edm.py --dataset $DATASET --img_size 9 \
+      --exp_root $WORK_DIR/DL_Projects/mini_edm --expr Wide \
       --channel_mult $CHANNEL_MULT --model_channels $MODEL_CHANNELS \
       --attn_resolutions $ATTN_RESOLUTIONS --layers_per_block $LAYERS_PER_BLOCK \
       --train_batch_size 128 --num_steps 1000000 \
@@ -146,6 +147,7 @@ ATTN_RESOLUTIONS="0 1 2"
 LAYERS_PER_BLOCK="2"
 ## training
 python -u train_abstr_edm.py --dataset $DATASET --img_size 9 \
+      --exp_root $WORK_DIR/DL_Projects/mini_edm --expr Wide \
       --channel_mult $CHANNEL_MULT --model_channels $MODEL_CHANNELS \
       --attn_resolutions $ATTN_RESOLUTIONS --layers_per_block $LAYERS_PER_BLOCK \
       --train_batch_size 128 --num_steps 1000000 \

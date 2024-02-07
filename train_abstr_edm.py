@@ -235,6 +235,7 @@ if __name__ == "__main__":
     parser.add_argument("--expr", type=str, default="base")
     parser.add_argument("--dataset", type=str, default="RAVEN10")
     # parser.add_argument("--dataset_root", type=str, default="")
+    parser.add_argument("--exp_root", type=str, default="")
     parser.add_argument("--cmb_per_class", type=int, default=3333)
     parser.add_argument('--seed', default=42, type=int, help='global seed')
     parser.add_argument("--train_batch_size", type=int, default=16)
@@ -271,7 +272,7 @@ if __name__ == "__main__":
     # workdir setup
     config.expr = f"{config.expr}_{config.dataset}"
     run_id = datetime.now().strftime("%Y%m%d-%H%M")
-    outdir = f"exps/{config.expr}_{run_id}"
+    outdir = join(config.exp_root, f"exps/{config.expr}_{run_id}")
     os.makedirs(outdir, exist_ok=True)
     sample_dir = f"{outdir}/samples"
     os.makedirs(sample_dir, exist_ok=True)
