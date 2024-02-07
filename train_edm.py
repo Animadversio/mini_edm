@@ -151,11 +151,39 @@ def create_model(config):
     logging.info(f'total number of parameters in the Score Model: {pytorch_total_params}')
     return unet
     
+    
+class CachedImageFolder(torchvision.datasets.ImageFolder):
+    def __init__(self, root, transform=None, target_transform=None):
+        super(CachedImageFolder, self).__init__(root, transform=transform, target_transform=target_transform)
+        self.cache = {}
 
+    def __getitem__(self, index):
+        """
+        Overriding the method to include caching.
+        """
+        path, target = self.samples[index]
+        if path not in self.cache:
+            # Load and transform the image if it's not in cache
+            sample = self.loader(path)
+            if self.transform is not None:
+                sample = self.transform(sample)
+            if self.target_transform is not None:
+                target = self.target_transform(target)
+            
+            # Save to cache
+            self.cache[path] = (sample, target)
+        else:
+            # Retrieve from cache
+            sample, target = self.cache[path]
+
+        return sample, target
+    
+    
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--expr", type=str, default="base")
     parser.add_argument("--dataset", type=str, default="cifar")
+    parser.add_argument("--dataset_root", type=str, default="")
     parser.add_argument('--seed', default=42, type=int, help='global seed')
     parser.add_argument("--train_batch_size", type=int, default=16)
     parser.add_argument("--num_steps", type=int, default=200000)
@@ -165,6 +193,7 @@ if __name__ == "__main__":
     parser.add_argument("--save_model_iters", type=int, default=5000)
     parser.add_argument("--log_step", type=int, default=500)
     parser.add_argument("--train_dataset", action='store_true', default=True)
+    parser.add_argument("--grayscale", action='store_true', default=False)
     parser.add_argument("--desired_class", type=str, default='all')
     parser.add_argument("--train_progress_bar", action='store_true', default=False)
     parser.add_argument("--warmup", type=int, default=5000)
@@ -187,8 +216,6 @@ if __name__ == "__main__":
     config = parser.parse_args()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     config.device = device
-    channels = {'mnist': 1, 'cifar10': 3}
-    config.channels = channels[config.dataset]
 
     # workdir setup
     config.expr = f"{config.expr}_{config.dataset}"
@@ -238,8 +265,25 @@ if __name__ == "__main__":
                                             ),)
         # CIFAR10 class labels
         classes = ['plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
+    elif isinstance(config.dataset, str) and os.path.isdir(config.dataset_root):
+        img_dataset = CachedImageFolder(root=config.dataset_root, 
+                                            transform=torchvision.transforms.Compose(
+                                                    [torchvision.transforms.Resize(config.img_size),
+                                                    torchvision.transforms.Grayscale(num_output_channels=1) if config.grayscale == True else lambda x: x,
+                                                    torchvision.transforms.ToTensor(),
+                                                    torchvision.transforms.Normalize((0.5,), (0.5,))]
+                                            ),)
+        # mnist class labels
+        classes = []
     else:
         raise NotImplementedError(f'dataset {config.dataset} not implemented')
+    print(f'length of dataset: {len(img_dataset)}')
+    channels = {'mnist': 1, 'cifar10': 3, }
+    if config.dataset in channels:
+        config.channels = channels[config.dataset]
+    else:
+        config.channels = img_dataset[0][0].shape[0]
+        print('channels not set, infer from dataset, channels: ', config.channels)
     # Filter the dataset to only keep desired_class images
     if config.desired_class != 'all':
         class_idx = classes.index(config.desired_class)
