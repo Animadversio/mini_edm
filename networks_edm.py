@@ -350,6 +350,10 @@ class SongUNet(torch.nn.Module):
                 aux = tmp if aux is None else tmp + aux
             else:
                 if x.shape[1] != block.in_channels:
+                    # use this to avoid mismatched shapes
+                    if x.shape[2] < skips[-1].shape[2]:
+                        # x = torch.nn.functional.interpolate(x, size=skips[-1].shape[2:], mode='bilinear', align_corners=False)
+                        x = torch.nn.functional.pad(x, (0, skips[-1].shape[2] - x.shape[2], 0, skips[-1].shape[3] - x.shape[3]), mode='constant', value=0)
                     x = torch.cat([x, skips.pop()], dim=1)
                 x = block(x, emb)
         return aux
