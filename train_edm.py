@@ -144,6 +144,7 @@ def create_model(config):
                     augment_dim=9, 
                     channel_mult_noise=1, 
                     resample_filter=[1,1], 
+                    spatial_matching=config.spatial_matching
                     )
     pytorch_total_grad_params = sum(p.numel() for p in unet.parameters() if p.requires_grad)
     logging.info(f'total number of trainable parameters in the Score Model: {pytorch_total_grad_params}')
@@ -212,6 +213,7 @@ if __name__ == "__main__":
     parser.add_argument('--channel_mult', default=[1,2,2,2], type=int, nargs='+', help='channel_mult')
     parser.add_argument('--attn_resolutions', default=[], type=int, nargs='+', help='attn_resolutions')
     parser.add_argument('--layers_per_block', default=4, type=int, help='num_blocks')
+    parser.add_argument("--spatial_matching", type=str, default='padding')
     
     config = parser.parse_args()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

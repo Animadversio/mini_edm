@@ -239,12 +239,14 @@ class SongUNet(torch.nn.Module):
         encoder_type        = 'standard',   # Encoder architecture: 'standard' for DDPM++, 'residual' for NCSN++.
         decoder_type        = 'standard',   # Decoder architecture: 'standard' for both DDPM++ and NCSN++.
         resample_filter     = [1,1],        # Resampling filter: [1,1] for DDPM++, [1,3,3,1] for NCSN++.
+        spatial_matching    = 'padding'     # 
     ):
         assert embedding_type in ['fourier', 'positional']
         assert encoder_type in ['standard', 'skip', 'residual']
         assert decoder_type in ['standard', 'skip']
 
         super().__init__()
+        self.spatial_matching = spatial_matching
         self.label_dropout = label_dropout
         emb_channels = model_channels * channel_mult_emb
         noise_channels = model_channels * channel_mult_noise
@@ -352,8 +354,10 @@ class SongUNet(torch.nn.Module):
                 if x.shape[1] != block.in_channels:
                     # use this to avoid mismatched shapes
                     if x.shape[2] < skips[-1].shape[2]:
-                        # x = torch.nn.functional.interpolate(x, size=skips[-1].shape[2:], mode='bilinear', align_corners=False)
-                        x = torch.nn.functional.pad(x, (0, skips[-1].shape[2] - x.shape[2], 0, skips[-1].shape[3] - x.shape[3]), mode='constant', value=0)
+                        if self.spatial_matching == 'padding':
+                            x = torch.nn.functional.pad(x, (0, skips[-1].shape[2] - x.shape[2], 0, skips[-1].shape[3] - x.shape[3]), mode='constant', value=0)
+                        elif self.spatial_matching == 'bilinear':
+                            x = torch.nn.functional.interpolate(x, size=skips[-1].shape[2:], mode='bilinear', align_corners=False)
                     x = torch.cat([x, skips.pop()], dim=1)
                 x = block(x, emb)
         return aux

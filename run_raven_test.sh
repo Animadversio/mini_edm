@@ -157,3 +157,75 @@ python -u train_abstr_edm.py --dataset $DATASET --img_size 9 \
       --save_model_iters 2000
 
 
+# Wide Deep NN for RAVEN10_abstract
+DATASET="RAVEN10_abstract"
+CHANNEL_MULT="1 2 4 4"
+MODEL_CHANNELS="192"
+ATTN_RESOLUTIONS="0 1 2"
+LAYERS_PER_BLOCK="3"
+## training
+python -u train_abstr_edm.py --dataset $DATASET --img_size 9 \
+      --exp_root $WORK_DIR/DL_Projects/mini_edm --expr BigBlnr \
+      --channel_mult $CHANNEL_MULT --model_channels $MODEL_CHANNELS \
+      --attn_resolutions $ATTN_RESOLUTIONS --layers_per_block $LAYERS_PER_BLOCK \
+      --spatial_matching bilinear \
+      --train_batch_size 128 --num_steps 1000000 \
+      --learning_rate 2e-4 --accumulation_steps 1 \
+      --log_step 100 --train_progress_bar  --eval_batch_size 2048 \
+      --save_images_step 500 \
+      --save_model_iters 20000
+
+
+DATASET="RAVEN10_abstract_onehot"
+CHANNEL_MULT="1 2 4 4"
+MODEL_CHANNELS="192"
+ATTN_RESOLUTIONS="0 1 2"
+LAYERS_PER_BLOCK="3"
+## training
+python -u train_abstr_edm.py --dataset $DATASET --img_size 9 \
+      --exp_root $WORK_DIR/DL_Projects/mini_edm --expr BigBlnr \
+      --channel_mult $CHANNEL_MULT --model_channels $MODEL_CHANNELS \
+      --attn_resolutions $ATTN_RESOLUTIONS --layers_per_block $LAYERS_PER_BLOCK \
+      --spatial_matching bilinear \
+      --train_batch_size 128 --num_steps 1000000 \
+      --learning_rate 2e-4 --accumulation_steps 1 \
+      --log_step 100 --train_progress_bar  --eval_batch_size 2048 \
+      --save_images_step 500 \
+      --save_model_iters 20000
+
+
+
+# Wide Deep NN for RAVEN10_abstract
+DATASET="RAVEN10_abstract"
+CHANNEL_MULT="1 2 4 4"
+MODEL_CHANNELS="256"
+ATTN_RESOLUTIONS="0 1 2"
+LAYERS_PER_BLOCK="4"
+## training
+python -u train_abstr_edm.py --dataset $DATASET --img_size 9 \
+      --exp_root $WORK_DIR/DL_Projects/mini_edm --expr Big \
+      --channel_mult $CHANNEL_MULT --model_channels $MODEL_CHANNELS \
+      --attn_resolutions $ATTN_RESOLUTIONS --layers_per_block $LAYERS_PER_BLOCK \
+      --train_batch_size 128 --num_steps 1000000 \
+      --learning_rate 2e-4 --accumulation_steps 1 \
+      --log_step 100 --train_progress_bar  --eval_batch_size 2048 \
+      --save_images_step 500 \
+      --save_model_iters 20000
+
+
+DATASET="RAVEN10_abstract_onehot"
+CHANNEL_MULT="1 2 4 4"
+MODEL_CHANNELS="256"
+ATTN_RESOLUTIONS="0 1 2"
+LAYERS_PER_BLOCK="4"
+## training
+python -u train_abstr_edm.py --dataset $DATASET --img_size 9 \
+      --exp_root $WORK_DIR/DL_Projects/mini_edm --expr Big \
+      --channel_mult $CHANNEL_MULT --model_channels $MODEL_CHANNELS \
+      --attn_resolutions $ATTN_RESOLUTIONS --layers_per_block $LAYERS_PER_BLOCK \
+      --train_batch_size 128 --num_steps 1000000 \
+      --learning_rate 2e-4 --accumulation_steps 1 \
+      --log_step 100 --train_progress_bar  --eval_batch_size 2048 \
+      --save_images_step 500 \
+      --save_model_iters 20000
+
