@@ -128,32 +128,6 @@ class EDM():
         return torch.as_tensor(sigma)
 
 ## UNet model creater
-def create_model(config):
-    from networks_edm import SongUNet
-    unet = SongUNet(in_channels=config.channels, 
-                    out_channels=config.channels, 
-                    num_blocks=config.layers_per_block, 
-                    attn_resolutions=config.attn_resolutions, 
-                    model_channels=config.model_channels, 
-                    channel_mult=config.channel_mult, 
-                    dropout=0.13, 
-                    img_resolution=config.img_size, 
-                    label_dim=0,
-                    embedding_type='positional', 
-                    encoder_type='standard', 
-                    decoder_type='standard', 
-                    augment_dim=9, 
-                    channel_mult_noise=1, 
-                    resample_filter=[1,1], 
-                    spatial_matching=config.spatial_matching
-                    )
-    pytorch_total_grad_params = sum(p.numel() for p in unet.parameters() if p.requires_grad)
-    logging.info(f'total number of trainable parameters in the Score Model: {pytorch_total_grad_params}')
-    pytorch_total_params = sum(p.numel() for p in unet.parameters())
-    logging.info(f'total number of parameters in the Score Model: {pytorch_total_params}')
-    return unet
-
-
 def create_model_RAVEN(config):
     from networks_edm_RAVEN import SongUNet
     unet = SongUNet(in_channels=config.channels, 
@@ -179,7 +153,7 @@ def create_model_RAVEN(config):
     pytorch_total_params = sum(p.numel() for p in unet.parameters())
     logging.info(f'total number of parameters in the Score Model: {pytorch_total_params}')
     return unet
-
+    
     
 import einops
 from tqdm import trange, tqdm
@@ -355,7 +329,7 @@ if __name__ == "__main__":
     logger.info(f'length of dataloader: {len(dataloader)}')
 
     ## init model
-    unet = create_model(config)
+    unet = create_model_RAVEN(config)
     edm = EDM(model=unet, cfg=config)
     edm.model.train()
     logger.info("#################### Model: ####################")
