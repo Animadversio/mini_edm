@@ -267,6 +267,7 @@ if __name__ == "__main__":
     parser.add_argument('--attn_resolutions', default=[], type=int, nargs='+', help='attn_resolutions')
     parser.add_argument('--layers_per_block', default=4, type=int, help='num_blocks')
     parser.add_argument("--spatial_matching", type=str, default='padding')
+    parser.add_argument("--train_attr_fn", type=str, default="train_inputs.pt") # "train_inputs_new.pt"
     
     config = parser.parse_args()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -300,15 +301,15 @@ if __name__ == "__main__":
 
     ## load dataset
     ### create dataloader
+    train_attr_fn = config.train_attr_fn 
+    train_attrs = torch.load(f'/n/home12/binxuwang/Github/DiffusionReasoning/{train_attr_fn}') # [35, 10000, 3, 9, 3]
     if config.dataset == 'RAVEN10_abstract':
-        img_dataset = dataset_PGM_abstract(cmb_per_class=config.cmb_per_class, device='cpu')
+        img_dataset = dataset_PGM_abstract(cmb_per_class=config.cmb_per_class, device='cpu', train_attrs=train_attrs)
         print("Normalization", img_dataset.Xmean, img_dataset.Xstd)
-        # mnist class labels
         classes = []
     elif config.dataset == 'RAVEN10_abstract_onehot':
-        img_dataset = dataset_PGM_abstract(cmb_per_class=config.cmb_per_class, device='cpu', onehot=True)
+        img_dataset = dataset_PGM_abstract(cmb_per_class=config.cmb_per_class, device='cpu', onehot=True, train_attrs=train_attrs)
         print("Normalization", img_dataset.Xmean, img_dataset.Xstd)
-        # mnist class labels
         classes = []
     else:
         raise NotImplementedError(f'dataset {config.dataset} not implemented')

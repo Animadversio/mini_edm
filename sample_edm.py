@@ -148,7 +148,7 @@ if __name__ == "__main__":
     if config.sample_mode == 'fid':
         from cleanfid import fid
         ### build feature extractor
-        mode = "legacy_tensorflow"
+        mode = "legacy_pytorch"
         feat_model = fid.build_feature_extractor(mode, device)
     elif config.sample_mode == 'save':
         # workdir setup
