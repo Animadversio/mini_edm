@@ -3,3 +3,5 @@ slurm_log/
 exps/
 datasets/
 *.pyc
+*.err
+*.out

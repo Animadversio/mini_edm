@@ -23,6 +23,7 @@ param_list=\
 --expr BigBlnrX3_new        --dataset RAVEN10_abstract_onehot --layers_per_block 3 --model_channels 192 --channel_mult 1 2 4 --attn_resolutions 9 3 --train_batch_size 256 --spatial_matching bilinear --learning_rate 2e-4
 --expr BBigBlnrX3_new       --dataset RAVEN10_abstract        --layers_per_block 4 --model_channels 256 --channel_mult 1 2 4 --attn_resolutions 9 3 --train_batch_size 256 --spatial_matching bilinear --learning_rate 2e-4
 --expr BBigBlnrX3_new       --dataset RAVEN10_abstract_onehot --layers_per_block 4 --model_channels 256 --channel_mult 1 2 4 --attn_resolutions 9 3 --train_batch_size 256 --spatial_matching bilinear --learning_rate 2e-4 
+--expr BBigBlnrX3_new       --dataset RAVEN10_abstract_onehot --layers_per_block 4 --model_channels 256 --channel_mult 1 2 4 --attn_resolutions 9 3 --train_batch_size 256 --spatial_matching bilinear --learning_rate 1e-4 
 '
 
 export param_name="$(echo "$param_list" | head -n $SLURM_ARRAY_TASK_ID | tail -1)"
@@ -38,7 +39,7 @@ which python3
 cd /n/home12/binxuwang/Github/mini_edm
 
 ## training
-python -u train_abstr_edm_RAVEN.py --exp_root $WORK_DIR/DL_Projects/mini_edm --img_size 9 \
+python -u train_abstr_edm_RAVEN.py --exp_root $STORE_DIR/DL_Projects/mini_edm --img_size 9 \
     --train_attr_fn train_inputs_new.pt --cmb_per_class 4000 \
     --log_step 100 --train_progress_bar  --eval_batch_size 2048 \
     --save_images_step 500 --save_model_iters 20000 --num_steps 1000000 \
