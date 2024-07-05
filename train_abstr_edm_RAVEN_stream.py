@@ -1,10 +1,11 @@
 import argparse
 import os
 join = os.path.join
+import json
 import torch
 import torchvision
 from torchvision.utils import save_image
-from tqdm import tqdm
+from tqdm import trange, tqdm
 import copy
 import random
 import logging
@@ -155,9 +156,25 @@ def create_model_RAVEN(config):
     return unet
     
     
+import sys
+sys.path.append('/n/home12/binxuwang/Github/DiffusionReasoning')
 import einops
-from tqdm import trange, tqdm
 from torch.utils.data import Dataset, DataLoader
+from torch.utils.tensorboard import SummaryWriter
+from rule_new_utils import infer_rule_from_sample_batch, compute_rule_statistics, format_samples, pool_rules
+def namespace_to_dict(namespace):
+    """
+    Converts an argparse.Namespace to a serializable dictionary.
+    Handles special cases like torch.device.
+    """
+    output_dict = vars(namespace).copy()
+    for key, value in output_dict.items():
+        if isinstance(value, torch.device):
+            output_dict[key] = str(value)
+        # Add more cases here if needed for other non-serializable types
+    return output_dict
+
+
 def _sample_panels(train_row_img, cmb_per_class=3333):
     X = []
     y = []
@@ -197,18 +214,30 @@ def _sample_panels(train_row_img, cmb_per_class=3333):
 
 
 
-class dataset_PGM_abstract(Dataset): 
-    def __init__(self, cmb_per_class=3333, train_attrs=None, device="cpu", onehot=False): 
+class dataset_PGM_abstract_efficient(Dataset): 
+    def __init__(self, cmb_per_class=3333, default_cmb=True, train_attrs=None, device="cpu", onehot=False): 
         """attr_list: [num_samples, 3, 9, 3]"""
         if train_attrs is None:
             train_attrs = torch.load('/n/home12/binxuwang/Github/DiffusionReasoning/train_inputs.pt') # [35, 10000, 3, 9, 3]
         n_classes = train_attrs.shape[0] # 35
-        n_samples = train_attrs.shape[1] # 10k
-        self.labels = torch.arange(0, n_classes).unsqueeze(1).expand(n_classes, n_samples)
-        train_attrs = train_attrs.to(int)
-        self.train_row_img = einops.rearrange(train_attrs, 'c s pnl (H W) attr -> c s attr H (pnl W)', H=3, W=3, attr=3, pnl=3)
-        self.X, self.y, self.row_ids = _sample_panels(self.train_row_img, cmb_per_class)
-        self.X = self.X.to(device) # [35 * cmb_per_class, 3, 9, 9]
+        # n_samples = train_attrs.shape[1] # 10k
+        # self.labels = torch.arange(0, n_classes).unsqueeze(1).expand(n_classes, n_samples)
+        if default_cmb:
+            # for efficiency we used the default combination, i.e. the neighboring 3 rows form a panel. 
+            attr_img_tsr = einops.rearrange(train_attrs,  'cls (B R) p (H W) attr -> cls B attr (R H) (p W)', H=3,W=3,p=3,R=3,attr=3,)
+            max_default_cmb = attr_img_tsr.shape[1]
+            if cmb_per_class > max_default_cmb:
+                raise ValueError(f'cmb_per_class should be less than {max_default_cmb}')
+            self.X = attr_img_tsr[:, :cmb_per_class]
+            self.y = torch.arange(0, n_classes).unsqueeze(1).expand(n_classes, cmb_per_class).to(int)
+            self.X = einops.rearrange(self.X, 'cls B attr H W -> (cls B) attr H W')
+            self.y = einops.rearrange(self.y, 'cls B -> (cls B)')
+            self.row_ids = None 
+        else:
+            train_attrs = train_attrs.to(int)
+            self.train_row_img = einops.rearrange(train_attrs, 'c s pnl (H W) attr -> c s attr H (pnl W)', H=3, W=3, attr=3, pnl=3)
+            self.X, self.y, self.row_ids = _sample_panels(self.train_row_img, cmb_per_class)
+            self.X = self.X.to(device) # [35 * cmb_per_class, 3, 9, 9]
         if onehot is True:
             O1 = torch.cat([torch.eye(7, 7, dtype=int), torch.zeros(1, 7, dtype=int)], dim=0)
             O2 = torch.cat([torch.eye(10, 10, dtype=int), torch.zeros(1, 10, dtype=int)], dim=0)
@@ -273,7 +302,7 @@ if __name__ == "__main__":
     parser.add_argument("--spatial_matching", type=str, default='padding')
     parser.add_argument("--train_attr_fn", type=str, default="train_inputs.pt") # "train_inputs_new.pt"
     parser.add_argument("--dataset_root", type=str, default="/n/home12/binxuwang/Github/DiffusionReasoning")
-# data_root = '/n/home12/binxuwang/Github/DiffusionReasoning'", 
+    # data_root = '/n/home12/binxuwang/Github/DiffusionReasoning'", 
     
     config = parser.parse_args()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -311,13 +340,15 @@ if __name__ == "__main__":
     data_root = config.dataset_root # data_root = '/n/home12/binxuwang/Github/DiffusionReasoning'
     train_attrs = torch.load(f'{data_root}/{train_attr_fn}') # [35, 10000, 3, 9, 3]
     if config.dataset == 'RAVEN10_abstract':
-        img_dataset = dataset_PGM_abstract(cmb_per_class=config.cmb_per_class, device='cpu', train_attrs=train_attrs)
+        img_dataset = dataset_PGM_abstract_efficient(cmb_per_class=config.cmb_per_class, device='cpu', train_attrs=train_attrs)
         print("Normalization", img_dataset.Xmean, img_dataset.Xstd)
         classes = []
+        config.encoding = 'digit'
     elif config.dataset == 'RAVEN10_abstract_onehot':
-        img_dataset = dataset_PGM_abstract(cmb_per_class=config.cmb_per_class, device='cpu', onehot=True, train_attrs=train_attrs)
+        img_dataset = dataset_PGM_abstract_efficient(cmb_per_class=config.cmb_per_class, device='cpu', onehot=True, train_attrs=train_attrs)
         print("Normalization", img_dataset.Xmean, img_dataset.Xstd)
         classes = []
+        config.encoding = 'onehot'
     else:
         raise NotImplementedError(f'dataset {config.dataset} not implemented')
     # dump dataset
@@ -340,14 +371,15 @@ if __name__ == "__main__":
     unet = create_model_RAVEN(config)
     edm = EDM(model=unet, cfg=config)
     edm.model.train()
+    json.dump(namespace_to_dict(config), open(join(outdir, "config.json"), 'w'))
     logger.info("#################### Model: ####################")
     # logger.info(f'{unet}')
     logger.info(f'number of trainable parameters of phi model in optimizer: {sum(p.numel() for p in unet.parameters() if p.requires_grad)}')
-
+    writer = SummaryWriter(log_dir=join(outdir, "tensorboard_logs"))
     ## setup optimizer
     # optimizer = torch.optim.AdamW(edm.model.parameters(),lr=config.learning_rate)
     optimizer = torch.optim.Adam(edm.model.parameters(),lr=config.learning_rate)
-
+    eval_dict = {}
     logger.info("#################### Training ####################")
     train_loss_values = 0
     if config.train_progress_bar:
@@ -379,13 +411,18 @@ if __name__ == "__main__":
         edm.update_ema()
         ## Update state
         if config.train_progress_bar:
-            logs = {"loss": loss.detach().item()}
+            logs = {"loss": loss.detach().item(), **eval_dict}
             progress_bar.update(1) 
             progress_bar.set_postfix(**logs)
         ## log
         if step % config.log_step == 0 or step == config.num_steps - 1:
             current_lr = optimizer.param_groups[0]['lr']
-            logger.info(f'step: {step:08d}, current lr: {current_lr:0.6f} average loss: {train_loss_values/(step+1):0.10f}; batch loss: {batch_loss.detach().item():0.10f}')
+            avg_loss = train_loss_values/(step+1)
+            logger.info(f'step: {step:08d}, current lr: {current_lr:0.6f} average loss: {avg_loss:0.10f}; batch loss: {batch_loss.detach().item():0.10f}')
+            writer.add_scalar('Loss/average', avg_loss, step)
+            writer.add_scalar('Loss/batch', batch_loss.detach().item(), step)
+            writer.add_scalar('Learning Rate', current_lr, step)
+        
         ## save images
         if config.save_images_step and (step % config.save_images_step == 0 or step == config.num_steps - 1):
             # generate data with the model to later visualize the learning process
@@ -393,12 +430,35 @@ if __name__ == "__main__":
             x_T = torch.randn([config.eval_batch_size, config.channels, config.img_size, config.img_size]).to(device).float()
             sample = edm_sampler(edm, x_T, num_steps=config.total_steps).detach().cpu()
             sample = (sample * img_dataset.Xstd) + img_dataset.Xmean
-            # save_image((sample/2+0.5).clamp(0, 1), f'{sample_dir}/image_{step}.png')
             torch.save(sample, f'{sample_dir}/tensor_{step}.pt')
-            # save literal array 
-            # pkl.dump(sample, open(f'{sample_dir}/sample_{step}.pkl', 'w'))
+            # format and evaluate rules from the samples
+            sample_fmt = format_samples(sample, config.encoding)
+            c3_list, c2_list, rule_col = infer_rule_from_sample_batch(sample_fmt)
+            c3_cnt, c2_cnt, anyvalid_cnt, total = compute_rule_statistics(c3_list, c2_list, rule_col)
+            c3_vec, c2_vec, rule_vec = pool_rules(c3_list, c2_list, rule_col)
+            torch.save({'c3_list': c3_list, 'c2_list': c2_list, 'rule_col': rule_col, 
+                        'c3_cnt': c3_cnt, 'c2_cnt': c2_cnt, 'anyvalid_cnt': anyvalid_cnt, 'total': total},
+                       f'{sample_dir}/sample_rule_eval_{step}.pt')
+            eval_dict = {"c3": c3_cnt / total, "c2": c2_cnt / total, "valid": anyvalid_cnt / total / 3}
+            writer.add_scalar('Rules/c3_cnt', c3_cnt, step)
+            writer.add_scalar('Rules/c2_cnt', c2_cnt, step)
+            writer.add_scalar('Rules/anyvalid_cnt', anyvalid_cnt, step)
+            
+            writer.add_scalar('Rules/c3', c3_cnt / total, step)
+            writer.add_scalar('Rules/c2', c2_cnt / total, step)
+            writer.add_scalar('Rules/anyvalid', anyvalid_cnt / total / 3, step)
+            if c3_cnt > 0:
+                writer.add_histogram('Rules/c3_vec', c3_vec, step)
+            if c2_cnt > 0:
+                writer.add_histogram('Rules/c2_vec', c2_vec, step)
+            if anyvalid_cnt > 0:
+                writer.add_histogram('Rules/rule_vec', rule_vec, step)
+
             edm.model.train()
+            
         ## save model
         if config.save_model_iters and (step % config.save_model_iters == 0 or step == config.num_steps - 1) and step > 0:
             # torch.save(edm.model.state_dict(), f"{ckpt_dir}/model_{step}.pth")
             torch.save(edm.ema.state_dict(), f"{ckpt_dir}/ema_{step}.pth")
+
+writer.close()
