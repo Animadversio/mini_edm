@@ -215,11 +215,14 @@ def _sample_panels(train_row_img, cmb_per_class=3333):
 
 
 class dataset_PGM_abstract_efficient(Dataset): 
-    def __init__(self, cmb_per_class=3333, default_cmb=True, train_attrs=None, device="cpu", onehot=False): 
+    def __init__(self, cmb_per_class=3333, default_cmb=True, train_attrs=None, device="cpu", onehot=False, heldout_ids=()): 
         """attr_list: [num_samples, 3, 9, 3]"""
         if train_attrs is None:
             train_attrs = torch.load('/n/home12/binxuwang/Github/DiffusionReasoning/train_inputs.pt') # [35, 10000, 3, 9, 3]
-        n_classes = train_attrs.shape[0] # 35
+        n_classes = train_attrs.shape[0] # 35 -> now 40
+        train_cls_msk = torch.ones(n_classes, dtype=bool)
+        for heldout_id in heldout_ids:
+            train_cls_msk[heldout_id] = False
         # n_samples = train_attrs.shape[1] # 10k
         # self.labels = torch.arange(0, n_classes).unsqueeze(1).expand(n_classes, n_samples)
         if default_cmb:
@@ -230,10 +233,13 @@ class dataset_PGM_abstract_efficient(Dataset):
                 raise ValueError(f'cmb_per_class should be less than {max_default_cmb}')
             self.X = attr_img_tsr[:, :cmb_per_class]
             self.y = torch.arange(0, n_classes).unsqueeze(1).expand(n_classes, cmb_per_class).to(int)
-            self.X = einops.rearrange(self.X, 'cls B attr H W -> (cls B) attr H W')
-            self.y = einops.rearrange(self.y, 'cls B -> (cls B)')
+            self.X = einops.rearrange(self.X[train_cls_msk, :], 'cls B attr H W -> (cls B) attr H W')
+            self.y = einops.rearrange(self.y[train_cls_msk, :], 'cls B -> (cls B)')
             self.row_ids = None 
         else:
+            if heldout_ids:
+                # TODO: add the train_cls_msk for this part 
+                raise NotImplementedError('heldout_ids not supported for random combination yet')
             train_attrs = train_attrs.to(int)
             self.train_row_img = einops.rearrange(train_attrs, 'c s pnl (H W) attr -> c s attr H (pnl W)', H=3, W=3, attr=3, pnl=3)
             self.X, self.y, self.row_ids = _sample_panels(self.train_row_img, cmb_per_class)
@@ -302,6 +308,7 @@ if __name__ == "__main__":
     parser.add_argument("--spatial_matching", type=str, default='padding')
     parser.add_argument("--train_attr_fn", type=str, default="train_inputs.pt") # "train_inputs_new.pt"
     parser.add_argument("--dataset_root", type=str, default="/n/home12/binxuwang/Github/DiffusionReasoning")
+    parser.add_argument("--heldout_ids", default=[], type=int, nargs='+', help='class ids for heldout not included in training') # [1, 16, 20, 34, 37] for previous default
     # data_root = '/n/home12/binxuwang/Github/DiffusionReasoning'", 
     
     config = parser.parse_args()
@@ -340,12 +347,12 @@ if __name__ == "__main__":
     data_root = config.dataset_root # data_root = '/n/home12/binxuwang/Github/DiffusionReasoning'
     train_attrs = torch.load(f'{data_root}/{train_attr_fn}') # [35, 10000, 3, 9, 3]
     if config.dataset == 'RAVEN10_abstract':
-        img_dataset = dataset_PGM_abstract_efficient(cmb_per_class=config.cmb_per_class, device='cpu', train_attrs=train_attrs)
+        img_dataset = dataset_PGM_abstract_efficient(cmb_per_class=config.cmb_per_class, device='cpu', train_attrs=train_attrs, heldout_ids=config.heldout_ids)
         print("Normalization", img_dataset.Xmean, img_dataset.Xstd)
         classes = []
         config.encoding = 'digit'
     elif config.dataset == 'RAVEN10_abstract_onehot':
-        img_dataset = dataset_PGM_abstract_efficient(cmb_per_class=config.cmb_per_class, device='cpu', onehot=True, train_attrs=train_attrs)
+        img_dataset = dataset_PGM_abstract_efficient(cmb_per_class=config.cmb_per_class, device='cpu', onehot=True, train_attrs=train_attrs, heldout_ids=config.heldout_ids)
         print("Normalization", img_dataset.Xmean, img_dataset.Xstd)
         classes = []
         config.encoding = 'onehot'
@@ -439,6 +446,7 @@ if __name__ == "__main__":
             torch.save({'c3_list': c3_list, 'c2_list': c2_list, 'rule_col': rule_col, 
                         'c3_cnt': c3_cnt, 'c2_cnt': c2_cnt, 'anyvalid_cnt': anyvalid_cnt, 'total': total},
                        f'{sample_dir}/sample_rule_eval_{step}.pt')
+            # use this dict to log at progress bar. 
             eval_dict = {"c3": c3_cnt / total, "c2": c2_cnt / total, "valid": anyvalid_cnt / total / 3}
             writer.add_scalar('Rules/c3_cnt', c3_cnt, step)
             writer.add_scalar('Rules/c2_cnt', c2_cnt, step)
