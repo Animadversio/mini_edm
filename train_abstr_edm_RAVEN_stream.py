@@ -456,11 +456,11 @@ if __name__ == "__main__":
             writer.add_scalar('Rules/c2', c2_cnt / total, step)
             writer.add_scalar('Rules/anyvalid', anyvalid_cnt / total / 3, step)
             if c3_cnt > 0:
-                writer.add_histogram('Rules/c3_vec', c3_vec, step)
+                writer.add_histogram('Rules/c3_vec', c3_vec, step, bins=range(41))
             if c2_cnt > 0:
-                writer.add_histogram('Rules/c2_vec', c2_vec, step)
+                writer.add_histogram('Rules/c2_vec', c2_vec, step, bins=range(41))
             if anyvalid_cnt > 0:
-                writer.add_histogram('Rules/rule_vec', rule_vec, step)
+                writer.add_histogram('Rules/rule_vec', rule_vec, step, bins=range(41))
 
             edm.model.train()
             

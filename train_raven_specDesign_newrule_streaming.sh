@@ -31,6 +31,10 @@ param_list=\
  --expr WideBlnrX3_new_stream1_6M_heldout0   --cmb_per_class 40000  --heldout_ids 1  16  20  34  37   --dataset RAVEN10_abstract        --layers_per_block 2 --model_channels 128 --channel_mult 1 2 4 --attn_resolutions 9 3 --train_batch_size 256 --spatial_matching bilinear --learning_rate 2e-4
  --expr WideBlnrX3_new_stream0_48M_heldout0  --cmb_per_class 12000  --heldout_ids 1  16  20  34  37   --dataset RAVEN10_abstract        --layers_per_block 2 --model_channels 128 --channel_mult 1 2 4 --attn_resolutions 9 3 --train_batch_size 256 --spatial_matching bilinear --learning_rate 2e-4
  --expr WideBlnrX3_new_stream0_16M_heldout0  --cmb_per_class  4000  --heldout_ids 1  16  20  34  37   --dataset RAVEN10_abstract        --layers_per_block 2 --model_channels 128 --channel_mult 1 2 4 --attn_resolutions 9 3 --train_batch_size 256 --spatial_matching bilinear --learning_rate 2e-4
+ --expr BigBlnrX3_new_stream0_016M  --cmb_per_class  400     --dataset RAVEN10_abstract        --layers_per_block 3 --model_channels 192 --channel_mult 1 2 4 --attn_resolutions 9 3 --train_batch_size 256 --spatial_matching bilinear --learning_rate 2e-4
+ --expr WideBlnrX3_new_stream0_016M --cmb_per_class  400      --dataset RAVEN10_abstract        --layers_per_block 2 --model_channels 128 --channel_mult 1 2 4 --attn_resolutions 9 3 --train_batch_size 256 --spatial_matching bilinear --learning_rate 2e-4
+ --expr BigBlnrX3_new_stream0_016M_heldout0  --cmb_per_class  400  --heldout_ids 1  16  20  34  37   --dataset RAVEN10_abstract        --layers_per_block 3 --model_channels 192 --channel_mult 1 2 4 --attn_resolutions 9 3 --train_batch_size 256 --spatial_matching bilinear --learning_rate 2e-4
+ --expr WideBlnrX3_new_stream0_016M_heldout0  --cmb_per_class  400  --heldout_ids 1  16  20  34  37   --dataset RAVEN10_abstract        --layers_per_block 2 --model_channels 128 --channel_mult 1 2 4 --attn_resolutions 9 3 --train_batch_size 256 --spatial_matching bilinear --learning_rate 2e-4
  '
  # 
 # --expr BaseX3_new           --dataset RAVEN10_abstract        --layers_per_block 1 --model_channels 64  --channel_mult 1 2 4 --attn_resolutions 9 3 --train_batch_size 256 --spatial_matching padding --learning_rate 2e-4
@@ -52,6 +56,8 @@ param_list=\
 # --expr BigBlnrX3_new        --dataset RAVEN10_abstract_onehot --layers_per_block 3 --model_channels 192 --channel_mult 1 2 4 --attn_resolutions 9 3 --train_batch_size 256 --spatial_matching bilinear --learning_rate 2e-4
 # --expr WideBlnrX3_new_noattn --dataset RAVEN10_abstract        --layers_per_block 2 --model_channels 128 --channel_mult 1 2 4 --attn_resolutions 0   --train_batch_size 256 --spatial_matching bilinear --learning_rate 2e-4
 
+# 36 hrs for big models
+# 24 hrs for wide models
 
 export param_name="$(echo "$param_list" | head -n $SLURM_ARRAY_TASK_ID | tail -1)"
 echo "$param_name"
